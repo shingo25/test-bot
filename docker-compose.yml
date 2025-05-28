@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # Database (PostgreSQL for production)
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dca_bot
+      POSTGRES_USER: dca_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_this_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - dca_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dca_user -d dca_bot"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for session storage and rate limiting
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-change_this_password}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - dca_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # DCA Bot Application
+  dca-bot:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://dca_user:${DB_PASSWORD:-change_this_password}@postgres:5432/dca_bot
+      REDIS_URL: redis://:${REDIS_PASSWORD:-change_this_password}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change_this_jwt_secret_in_production}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change_this_32_character_key_in_prod}
+      LOG_LEVEL: info
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    volumes:
+      - app_data:/app/data
+      - app_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - dca_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx reverse proxy (for HTTPS and static file serving)
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - app_logs:/var/log/nginx
+    depends_on:
+      - dca-bot
+    networks:
+      - dca_network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_data:
+    driver: local
+  app_logs:
+    driver: local
+
+networks:
+  dca_network:
+    driver: bridge
