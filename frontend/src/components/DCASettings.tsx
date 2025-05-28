@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSettings, updateSettings, Settings } from '../api/api';
+import { getSettings, updateSettings } from '../api/api';
 
 interface DCASettingsProps {
   onSettingsUpdate: () => void;

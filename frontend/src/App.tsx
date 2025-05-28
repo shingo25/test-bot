@@ -98,14 +98,6 @@ function App() {
     }
   };
 
-  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('DCA Bot', {
-        body: message,
-        icon: type === 'success' ? '🟢' : '🔴'
-      });
-    }
-  };
 
   const requestNotificationPermission = () => {
     if ('Notification' in window && Notification.permission === 'default') {

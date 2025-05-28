@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getPurchaseHistory, getStatistics, PurchaseHistory as PurchaseHistoryType, Statistics } from '../api/api';
 
 const PurchaseHistory: React.FC = () => {
@@ -9,18 +9,7 @@ const PurchaseHistory: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
 
-  useEffect(() => {
-    fetchData();
-    
-    // 自動更新タイマー（30秒ごと）
-    const interval = setInterval(() => {
-      fetchData();
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, [currentPage]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       const offset = (currentPage - 1) * itemsPerPage;
@@ -38,7 +27,18 @@ const PurchaseHistory: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    fetchData();
+    
+    // 自動更新タイマー（30秒ごと）
+    const interval = setInterval(() => {
+      fetchData();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [fetchData]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
