@@ -16,7 +16,10 @@
       "Bash(chmod:*)",
       "Bash(./scripts/start-postgres.sh:*)",
       "Bash(cp:*)",
-      "Bash(./scripts/validate-env.sh:*)"
+      "Bash(./scripts/validate-env.sh:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(git fetch:*)"
     ],
     "deny": []
   }
